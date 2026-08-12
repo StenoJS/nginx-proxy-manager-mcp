@@ -1,33 +1,22 @@
-# Docker Compose configuration for NPM MCP Server
-
 services:
   npm-mcp:
-    image: ghcr.io/b3nw/nginx-proxy-manager-mcp:latest
+    build: .
+    image: npm-mcp:latest
     container_name: npm-mcp
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8010:8000"
     environment:
-      # Required: NPM API connection
-      - NPM_API_URL=http://nginx-proxy-manager:81/api
-      - NPM_IDENTITY=admin@example.com
-      - NPM_SECRET=changeme
-      # Optional: Server configuration
-      - NPM_MCP_TRANSPORT=http
-      - NPM_MCP_HOST=0.0.0.0
-      - NPM_MCP_PORT=8000
-      # Optional: Enable write/destructive operations (default: disabled)
-      # - NPM_MCP_ENABLE_DESTRUCTIVE_TOOLS=true
-      # Optional: Require bearer token for MCP HTTP clients
-      # - NPM_MCP_AUTH_TOKEN=your-secret-token-here
-      # Optional: Log access (requires volume mount below)
-      # - NPM_LOG_DIR=/data/npm-logs
-    # volumes:
-    #   # Mount NPM's log directory for get_proxy_host_logs tool (read-only)
-    #   - npm_data:/data/npm-logs:ro    # named volume — see "Log Access" in README
-    # Uncomment to use .env file instead of inline environment
-    # env_file:
-    #   - .env
+      NPM_API_URL: ${NPM_API_URL}
+      NPM_IDENTITY: ${NPM_IDENTITY}
+      NPM_SECRET: ${NPM_SECRET}
+      NPM_MCP_TRANSPORT: http
+      NPM_MCP_HOST: 0.0.0.0
+      NPM_MCP_PORT: "8000"
+      NPM_MCP_ENABLE_DESTRUCTIVE_TOOLS: "true"
+      NPM_MCP_AUTH_TOKEN: ${NPM_MCP_AUTH_TOKEN}
+    networks:
+      - hassio
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/mcp', timeout=5)"]
       interval: 30s
@@ -35,30 +24,6 @@ services:
       retries: 3
       start_period: 10s
 
-# Example: Running alongside NPM in same compose stack (with log access)
-# services:
-#   nginx-proxy-manager:
-#     image: jc21/nginx-proxy-manager:latest
-#     ports:
-#       - "80:80"
-#       - "443:443"
-#       - "81:81"
-#     volumes:
-#       - npm_data:/data
-#       - npm_letsencrypt:/etc/letsencrypt
-#
-#   npm-mcp:
-#     image: ghcr.io/b3nw/nginx-proxy-manager-mcp:latest
-#     environment:
-#       - NPM_API_URL=http://nginx-proxy-manager:81/api
-#       - NPM_IDENTITY=admin@example.com
-#       - NPM_SECRET=changeme
-#       - NPM_LOG_DIR=/data/npm-logs
-#     volumes:
-#       - npm_data:/data/npm-logs:ro
-#     depends_on:
-#       - nginx-proxy-manager
-#
-# volumes:
-#   npm_data:
-#   npm_letsencrypt:
+networks:
+  hassio:
+    external: true
