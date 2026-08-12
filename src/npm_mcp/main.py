@@ -48,9 +48,25 @@ def main() -> None:
         logger.info("Starting MCP server in stdio mode")
         mcp.run(transport="stdio")
     else:
-        logger.info(f"Starting MCP server in HTTP mode on {settings.mcp_host}:{settings.mcp_port}")
-        # Use FastMCP's native streamable-http transport (host/port configured in server.py)
-        mcp.run(transport="streamable-http")
+        logger.info(f"Starting MCP server in HTTP mode on {args.host}:{args.port}")
+
+        # Always construct the HTTP app using the same FastMCP.streamable_http_app()
+        # so that its lifespan (StreamableHTTPSessionManager background task) runs correctly.
+        app = mcp.streamable_http_app()
+
+        # Mount /health directly on the inner router
+        from starlette.responses import PlainTextResponse
+        from starlette.routing import Route
+        app.router.routes.insert(0, Route("/health", lambda r: PlainTextResponse("ok")))
+
+        if settings.mcp_auth_token:
+            logger.info("Bearer token authentication enabled")
+            from .auth import BearerAuthMiddleware
+            app.add_middleware(BearerAuthMiddleware, token=settings.mcp_auth_token)
+
+        import uvicorn
+
+        uvicorn.run(app, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
